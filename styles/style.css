@@ -1,0 +1,29 @@
+html {
+    box-sizing: border-box;
+}
+
+body {
+    font-size: calc(1vw + 1em);
+    line-height: 1.5;
+    font-family: 'Caveat', cursive, Verdana, Geneva, Tahoma, sans-serif;
+}
+
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: inherit;
+}
+
+canvas {
+    height: 100%;
+    width: 100%;
+}
+
+header {
+    border-bottom: 1px solid #acacac;
+    padding: 0 2em;
+    color: #d60080
+}
+
+.container {
+}
