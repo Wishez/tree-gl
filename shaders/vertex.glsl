@@ -1,10 +1,8 @@
-#version 300 es;
+attribute vec3 vertexPosition;
+attribute vec3 vertexColor;
 
-in vec3 a_position;
-
-uniform float uPointSize;
-
-void main(void) {
-  gl_PoinSize = uPointSize;
-  gl_Position = vec4(a_position_, 1.0);
-};
+varying vec3 fragColor;
+void main() {
+  fragColor = vertexColor;
+  gl_Position = vec4(vertexPosition, 1);
+}
