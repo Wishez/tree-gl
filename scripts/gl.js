@@ -1,3 +1,29 @@
+const startWebGl = (fragmetShaderText, vertexShaderText) => {
+  const gl = new WebGl({ canvasId: 'gl', vertexShaderText, fragmetShaderText })
+  const { canvas } = gl
+  canvas.addEventListener('click', (event) => {
+    const { clientX, clientY } = event
+    const { width, height } = canvas
+    const middleX = width / 2
+    const middleY = height / 2
+
+    const { left, top } = canvas.getBoundingClientRect()
+    const vertexX = (clientX - left - middleX) / middleX
+    const vertexY = (middleY - (clientY - top)) / middleY
+
+    gl.pushVertex(vertexX, vertexY)
+    gl.draw()
+  })
+
+  document.addEventListener('keydown', (event) => {
+    const { keyCode } = event
+    const deleteKeyCode = 46
+    if (keyCode === deleteKeyCode) {
+      gl.clearVertexArray()
+    } 
+  })
+}
+
 window.addEventListener('load', () => {
   let [VSText, FSText] = ['', ''];
   Util.domShaderSrc('/shaders/vertex.glsl')
@@ -14,59 +40,71 @@ window.addEventListener('load', () => {
     .catch(error => console.error(error))
 })
 
-function startWebGl(fragmetShaderText, vertexShaderText) {
-  const gl = new WebGl({ canvasId: 'gl', vertexShaderText, fragmetShaderText })
-
-  gl.startProgram()
-}
-
 class WebGl {
   constructor({ canvasId, vertexShaderText, fragmetShaderText }) {
     this.canvas = document.getElementById(canvasId)
     this.context = this.canvas.getContext('webgl')
     this.program = this.context.createProgram()
-    
+    this.vertexArray = []
+    this.vertiecesQuantity = 0
+    this.vertexElementsQuantity = 5
+    this.colors = [
+      [1.0, 0.1, 0.4],
+      [0.8, 0.0, 0.2],
+      [1.0, 0.0, 0.4],
+    ]
+
     this.setCanvasSize()
         .createShader('VERTEX_SHADER', vertexShaderText)
         .createShader('FRAGMENT_SHADER', fragmetShaderText)
         .validateProgram()
-        .createBuffer()
-        .drawFigure()
         .clearCanvas()
+  }
+
+  clearVertexArray() {
+    const { vertexArray, vertexElementsQuantity } = this
+    const vertexArrayLenth = vertexArray.length
+
+    this.vertexArray = vertexArray.slice(0, vertexArrayLenth - vertexElementsQuantity)
+    this.draw()
+    if (this.vertexArray.length) setTimeout(() => this.clearVertexArray(), 150)
+  }
+
+  pushVertex(x, y) {
+    const { vertexArray, getRandomColor } = this
+    const color = getRandomColor.call(this)
+    vertexArray.push(x, y, ...color)
+    this.vertiecesQuantity += 1
+
+    return this
+  }
+
+  getRandomColor() {
+    const { colors } = this
+    return colors[Math.round(Math.random() * colors.length)]
   }
 
   createBuffer() {
     const { context } = this
-    this.vertextBuffer = context.createBuffer()
+    this.vertexBuffer = context.createBuffer()
 
     const { ARRAY_BUFFER } = context
-    context.bindBuffer(ARRAY_BUFFER, this.vertextBuffer)
+    context.bindBuffer(ARRAY_BUFFER, this.vertexBuffer)
   
     return this
   }
 
-  drawFigure() {
-    const vertextArray = [
-    //  X  Y  R  G  B
-      0.5, 0.5, 0.0, 1.0, 0.1, 0.4, // element per iteration
-      0.5, -0.5, 0.0, 0.8, 0.0, 0.2,
-      -0.5, -0.5, 0.0, 1.0, 0.0, 0.4,
-      
-      -0.5, -0.5, 0.5, 1.0, 0.0, 0.4,
-      -0.5, 0.5, 0.5, 0.8, 0.0, 0.2,
-      0.5, 0.5, 0.5, 1.0, 0.1, 0.4,
-    ]
-    const { context } = this
-    const {
-      ARRAY_BUFFER,
-      STATIC_DRAW,
-    } = context
-    const floatedVertextArray = new Float32Array(vertextArray)
-    context.bufferData(ARRAY_BUFFER, floatedVertextArray, STATIC_DRAW)
+  draw() {
+    this.createBuffer()
+    const { context, vertexElementsQuantity } = this
+    const { ARRAY_BUFFER, STATIC_DRAW } = context
+    const floatedVertexArray = new Float32Array(this.vertexArray)
+    context.bufferData(ARRAY_BUFFER, floatedVertexArray, STATIC_DRAW)
     
-    const vertextElementQuantity = 6
-    this.enableAttribute('vertexPosition', vertextElementQuantity, 3, 0)
-    this.enableAttribute('vertexColor', vertextElementQuantity, 3, 3)
+    this.enableAttribute('vertexPosition', vertexElementsQuantity, 2, 0)
+        .enableAttribute('vertexColor', vertexElementsQuantity, 3, 2)
+        .clearCanvas()
+        .drawVerteces()
 
     return this
   }
@@ -85,6 +123,8 @@ class WebGl {
       offset * BYTES_PER_ELEMENT, // offset
     )
     context.enableVertexAttribArray(attribLocation)
+
+    return this
   }
 
   createShader(shaderType, shaderText) {
@@ -95,6 +135,7 @@ class WebGl {
     context.shaderSource(shader, shaderText)
     this.compileShader(shaderType)
         .bindShaderWithProgram(shaderType)
+
     return this
   }
 
@@ -114,6 +155,7 @@ class WebGl {
     const shader = this[shaderType]
 
     context.attachShader(program, shader)
+
     return this
   }
 
@@ -125,6 +167,7 @@ class WebGl {
     if (!context.getProgramParameter(program, context.VALIDATE_STATUS)) {
       throw new Error(`The program is not valid! ${context.getProgramInfoLog(program)}`)
     }
+
     return this
   }
 
@@ -137,6 +180,7 @@ class WebGl {
     canvas.height = height
     context.viewport(0, 0, width, height)
     canvas.style.opacity = 1
+
     return this
   }
 
@@ -144,19 +188,20 @@ class WebGl {
     const { context } = this
     context.clearColor(.75, .9, 1.0, 1.0)
     // | context.DEPTH_BUFFER_BIT
-    context.clear(context.COLOR_BUFFER_BIT) // очищает буффер глубины (для корректной работы перспективы) и буфер цвета
+    context.clear(context.COLOR_BUFFER_BIT | context.DEPTH_BUFFER_BIT) // очищает буффер глубины (для корректной работы перспективы) и буфер цвета
+
     return this
   }
 
-  startProgram() {
+  drawVerteces() {
     const { context } = this
     context.useProgram(this.program)
-    console.log(context.TRIANGLES, context.LINES, context.LINE_LOOP, context.LINE_STRIP, context.POINTS)
+    // console.log(context.TRIANGLES, context.LINES, context.LINE_LOOP, context.LINE_STRIP, context.POINTS)
     context.drawArrays(
-      // one of [context.TRIANGLES, context.LINES, context.LINE_LOOP, context.LINE_STRIP, context.POINTS]
-      context.TRIANGLES, // графичекий примитив
+      // one of [context.TRIANGLES, context.TRIANGLES_STRIP, context.TRIANGLES_FUN, context.LINES, context.LINE_LOOP, context.LINE_STRIP, context.POINTS]
+      context.TRIANGLE_STRIP, // графичекий примитив
       0, // стартовый индекс отрисовки
-      6 // количество вершин
+      this.vertiecesQuantity // количество вершин
     )
 
     return this
