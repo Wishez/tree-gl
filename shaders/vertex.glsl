@@ -1,8 +1,23 @@
-attribute vec2 vertexPosition;
-attribute vec3 vertexColor;
+attribute vec2 a_position;
+attribute vec3 a_vertexColor;
 
-varying vec3 fragColor;
+uniform vec2 u_resolution;
+varying vec3 v_fragColor;
+
+float zeroToTwoX;
+float clipSpaceX;
+
+float clipSpaceY;
+float middleCanvasY;
+
 void main() {
-  fragColor = vertexColor;
-  gl_Position = vec4(vertexPosition, 0, 1);
+  v_fragColor = a_vertexColor;
+
+  zeroToTwoX = (a_position.x / u_resolution.x) * 2.0;
+  clipSpaceX = zeroToTwoX - 1.0;
+
+  middleCanvasY = u_resolution.y / 2.0;
+  clipSpaceY = (middleCanvasY - a_position.y) / middleCanvasY;
+
+  gl_Position = vec4(clipSpaceX, clipSpaceY, 0, 1);
 }

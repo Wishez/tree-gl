@@ -20,6 +20,8 @@ body {
 }
 
 canvas {
+  width: 100vw;
+  height: 100vh;
   border: 4px dashed #232323;
   background-color: #f1f1f1;
   will-change: opcity;

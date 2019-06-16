@@ -3,15 +3,7 @@ const startWebGl = (fragmetShaderText, vertexShaderText) => {
   const { canvas } = gl
   canvas.addEventListener('click', (event) => {
     const { clientX, clientY } = event
-    const { width, height } = canvas
-    const middleX = width / 2
-    const middleY = height / 2
-
-    const { left, top } = canvas.getBoundingClientRect()
-    const vertexX = (clientX - left - middleX) / middleX
-    const vertexY = (middleY - (clientY - top)) / middleY
-
-    gl.pushVertex(vertexX, vertexY)
+    gl.pushVertex(clientX, clientY)
     gl.draw()
   })
 
@@ -96,21 +88,33 @@ class WebGl {
 
   draw() {
     this.createBuffer()
-    const { context, vertexElementsQuantity } = this
+    const { context, canvas } = this
     const { ARRAY_BUFFER, STATIC_DRAW } = context
     const floatedVertexArray = new Float32Array(this.vertexArray)
     context.bufferData(ARRAY_BUFFER, floatedVertexArray, STATIC_DRAW)
-    
-    this.enableAttribute('vertexPosition', vertexElementsQuantity, 2, 0)
-        .enableAttribute('vertexColor', vertexElementsQuantity, 3, 2)
-        .clearCanvas()
-        .drawVerteces()
+    console.log(canvas.width, canvas.height)
+    this
+      .setCanvasSize()
+      .enableAttribute('a_position', 2, 0)
+      .enableAttribute('a_vertexColor', 3, 2)
+      .setUniform('u_resolution', [canvas.width, canvas.height], '2fv')
+      .clearCanvas()
+      .drawVerteces()
 
     return this
   }
 
-  enableAttribute(attributeName, vertexElementsQuantity, attributeElementsQuantity, offset) {
-    const { context } = this
+  setUniform(uniformName, values, type) {
+    const { context, program } = this
+    const functionName = `uniform${type}`
+    const uniformLink = context.getUniformLocation(program, uniformName)
+    context[functionName](uniformLink, values)
+
+    return this
+  }
+
+  enableAttribute(attributeName, attributeElementsQuantity, offset) {
+    const { context, vertexElementsQuantity } = this
     const { FLOAT, FALSE } = context
     const { BYTES_PER_ELEMENT } = Float32Array
     const attribLocation = context.getAttribLocation(this.program, attributeName)
@@ -174,8 +178,9 @@ class WebGl {
   setCanvasSize() {
     const { canvas, context } = this
     const { innerHeight: height, innerWidth: width } = window
-    canvas.style.width = `${width}px`
-    canvas.style.height = `${height}px`
+
+    canvas.style.width = width
+    canvas.style.height = height
     canvas.width = width
     canvas.height = height
     context.viewport(0, 0, width, height)
@@ -188,7 +193,7 @@ class WebGl {
     const { context } = this
     context.clearColor(.75, .9, 1.0, 1.0)
     // | context.DEPTH_BUFFER_BIT
-    context.clear(context.COLOR_BUFFER_BIT | context.DEPTH_BUFFER_BIT) // очищает буффер глубины (для корректной работы перспективы) и буфер цвета
+    context.clear(context.COLOR_BUFFER_BIT) // очищает буффер глубины (для корректной работы перспективы) и буфер цвета
 
     return this
   }
@@ -199,10 +204,11 @@ class WebGl {
     // console.log(context.TRIANGLES, context.LINES, context.LINE_LOOP, context.LINE_STRIP, context.POINTS)
     context.drawArrays(
       // one of [context.TRIANGLES, context.TRIANGLES_STRIP, context.TRIANGLES_FUN, context.LINES, context.LINE_LOOP, context.LINE_STRIP, context.POINTS]
-      context.TRIANGLE_STRIP, // графичекий примитив
+      context.TRIANGLE_FAN, // графичекий примитив
       0, // стартовый индекс отрисовки
       this.vertiecesQuantity // количество вершин
     )
+
 
     return this
   }
