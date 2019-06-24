@@ -78,15 +78,6 @@ class WebGl {
     return this
   }
 
-  clearVertexArray() {
-    const { vertexArray, vertexElementsQuantity } = this
-    const vertexArrayLenth = vertexArray.length
-
-    this.vertexArray = vertexArray.slice(0, vertexArrayLenth - vertexElementsQuantity)
-    this.draw()
-    if (this.vertexArray.length) setTimeout(() => this.clearVertexArray(), 150)
-  }
-
   pushVertex(x, y) {
     const { vertexArray, getRandomColor } = this
     const color = getRandomColor.call(this)
@@ -104,6 +95,7 @@ class WebGl {
   createBuffer(bufferName) {
     const { context } = this
     this[bufferName] = context.createBuffer()
+    context.bindBuffer(context.ARRAY_BUFFER, this[bufferName])
   
     return this
   }
@@ -144,19 +136,17 @@ class WebGl {
       colors.push(145, 86, 255)
     }
     colors = colors.slice(0, vertiecesQuantity * 3)
-    console.log(colors.length / 3)
+    
     this.setPositions({
       coordinates: letterCoordinates,
     })
-      .setColors({
-        colors,
-      })
-      .bindBuffer('positionBuffer')
       .enableAttribute('a_position', 2, 0)
       .setUniformResolution()
       .setUniform('u_transition', [translateX, translateY], '2fv')
-      .bindBuffer('colorsBuffer')
-      .enableAttribute('a_color', 3, 0, 'UNSIGNED_BYTE', true)
+      // .setColors({
+      //   colors,
+      // })
+      // .enableAttribute('a_color', 3, 0, 'UNSIGNED_BYTE', true)
       .clearCanvas()
       .drawVertieces(vertiecesQuantity)
   }
@@ -190,7 +180,8 @@ class WebGl {
   }
 
   draw() {
-    this.createBuffer()
+    
+    this.createBuffer('dynamicPositionsBuffer')
     const { context } = this
     const { ARRAY_BUFFER, DYNAMIC_DRAW } = context
     const floatedVertexArray = new Float32Array(this.vertexArray)
