@@ -1,10 +1,10 @@
 attribute vec2 a_position;
-// attribute vec3 a_color;
 
 uniform vec2 u_resolution;
 uniform vec2 u_transition;
+uniform vec4 u_color;
 
-varying vec3 v_fragColor;
+varying vec4 v_fragColor;
 
 float translatedXPosition;
 float zeroToTwoX;
@@ -15,7 +15,7 @@ float middleCanvasY;
 float translatedYPosition;
 
 void main() {
-  v_fragColor = vec3(0.5, 0.3, 1);
+  v_fragColor = u_color;
 
   translatedXPosition = a_position.x + u_transition.x;
   zeroToTwoX = (translatedXPosition / u_resolution.x) * 2.0;

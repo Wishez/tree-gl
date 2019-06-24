@@ -7,25 +7,31 @@ const startWebGl = (fragmetShaderText, vertexShaderText) => {
   //   gl.draw()
   // })
 
+
   const defaultX = 50
   let [translateX, translateY] = [0, 0]
-  const drawF = () => gl.drawF(defaultX, canvas.width / 2, translateX, translateY)
+  const drawF = () => gl.drawF(defaultX, (canvas.height - 200) / 2, translateX, translateY)
+
+  window.addEventListener('resize', () => {
+    gl.setCanvasSize()
+    drawF()
+  })
 
   drawF()
   document.addEventListener('keydown', (event) => {
     const { keyCode } = event
     switch (keyCode) {
       case 38: // top
-        translateY += 1 
+        translateY -= 4
         break;
       case 39: // right
-        translateX += 1
+        translateX += 4
         break;
       case 40: // bottom
-        translateY -= 1
+        translateY += 4
         break;
       case 37: // left
-        translateX -= 1
+        translateX -= 4
         break;
       default:
     }
@@ -130,23 +136,32 @@ class WebGl {
        x + width * 2 / 3, y + thickness * 2,
        x + width * 2 / 3, y + thickness * 3,
     ]
+
     const vertiecesQuantity = letterCoordinates.length / 2
     let colors = []
     while (colors.length < vertiecesQuantity * 3) {
       colors.push(145, 86, 255)
     }
     colors = colors.slice(0, vertiecesQuantity * 3)
-    
     this.setPositions({
       coordinates: letterCoordinates,
     })
-      .enableAttribute('a_position', 2, 0)
+      .enableAttribute({
+        attributeName: 'a_position',
+        attributeElementsQuantity: 2,
+      })
       .setUniformResolution()
-      .setUniform('u_transition', [translateX, translateY], '2fv')
+      .setUniform('u_transition', '2fv', [translateX, translateY])
+      .setUniform('u_color', '4f', 0.3, 0.5, 1, 1)
       // .setColors({
       //   colors,
       // })
-      // .enableAttribute('a_color', 3, 0, 'UNSIGNED_BYTE', true)
+      // .enableAttribute({
+      //   attributeName: 'a_color',
+      //   attributeElementsQuantity: 3,
+      //   type: 'UNSIGNED_BYTE',
+      //   isNormalized: true,
+      // })
       .clearCanvas()
       .drawVertieces(vertiecesQuantity)
   }
@@ -179,51 +194,43 @@ class WebGl {
     return this
   }
 
-  draw() {
-    
-    this.createBuffer('dynamicPositionsBuffer')
-    const { context } = this
-    const { ARRAY_BUFFER, DYNAMIC_DRAW } = context
-    const floatedVertexArray = new Float32Array(this.vertexArray)
-    context.bufferData(ARRAY_BUFFER, floatedVertexArray, DYNAMIC_DRAW)
-    this
-      .setCanvasSize()
-      .enableAttribute('a_position', 2, 0)
-      .enableAttribute('a_color', 3, 2)
-      .setUniformResolution()
-      .clearCanvas()
-      .drawVertieces()
-
-    return this
-  }
-
   setUniformResolution() {
-    const { width, height } = this
-    this.setUniform('u_resolution', [width, height], '2fv')
+    const { width, height } = this.canvas
+    this.setUniform('u_resolution', '2f', width, height)
 
     return this
   }
 
-  setUniform(uniformName, values, type) {
+  setUniform(uniformName, type, ...values) {
     const { context, program } = this
     const functionName = `uniform${type}`
     const uniformLink = context.getUniformLocation(program, uniformName)
-    context[functionName](uniformLink, values)
+    context[functionName](uniformLink, ...values)
 
     return this
   }
 
-  enableAttribute(attributeName, attributeElementsQuantity, offset, type, isNormalized) {
-    const { context, vertexElementsQuantity, program } = this
-    const { BYTES_PER_ELEMENT } = Float32Array
+  enableAttribute(props) {
+    const { context, program } = this
+    
+    const {
+      attributeName,
+      attributeElementsQuantity,
+      offset = 0,
+      type = 'FLOAT',
+      isNormalized,
+      vertexElementsQuantity,
+      SpecialArray = Float32Array,
+    } = props
+    const { BYTES_PER_ELEMENT } = SpecialArray
     const attribLocation = context.getAttribLocation(program, attributeName)
-    const attribType = context[type || 'FLOAT']
+    const attribType = context[type]
     context.vertexAttribPointer(
       attribLocation, // link to attribute
       attributeElementsQuantity, // quantity elements per iteration of attribute
       attribType, // data type
       isNormalized, // normilize
-      vertexElementsQuantity * BYTES_PER_ELEMENT, // elemets on one vertex. second argument change this argument
+      (vertexElementsQuantity || attributeElementsQuantity) * BYTES_PER_ELEMENT, // elemets on one vertex. second argument change this argument
       offset * BYTES_PER_ELEMENT, // offset
     )
     context.enableVertexAttribArray(attribLocation)
@@ -307,6 +314,33 @@ class WebGl {
       vertiecesQuantity || this.vertiecesQuantity // количество вершин
     )
 
+
+    return this
+  }
+
+  draw() {
+    this.createBuffer('dynamicPositionsBuffer')
+    const { context, vertexElementsQuantity } = this
+    const { ARRAY_BUFFER, DYNAMIC_DRAW } = context
+    const floatedVertexArray = new Float32Array(this.vertexArray)
+    context.bufferData(ARRAY_BUFFER, floatedVertexArray, DYNAMIC_DRAW)
+    
+    this
+      .setCanvasSize()
+      .enableAttribute({
+        attributeName: 'a_position',
+        attributeElementsQuantity: 2,
+        vertexElementsQuantity,
+      })
+      .enableAttribute({
+        attributeName: 'a_color',
+        attributeElementsQuantity: 3,
+        offset: 2,
+        vertexElementsQuantity,
+      })
+      .setUniformResolution()
+      .clearCanvas()
+      .drawVertieces()
 
     return this
   }
