@@ -36,3 +36,17 @@ main {
   align-items: center;
   justify-content: center;
 }
+
+.rangeInputs {
+  width: 345px;
+  padding: 1em 1em 1.25em;
+  position: fixed;
+  top: 0;
+  right: 0;
+  display: flex;
+  flex-flow: column;
+}
+
+input[type="range"] {
+  margin: 1em 0;
+}

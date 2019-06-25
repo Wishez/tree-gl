@@ -7,38 +7,68 @@ const startWebGl = (fragmetShaderText, vertexShaderText) => {
   //   gl.draw()
   // })
 
-
   const defaultX = 50
   let [translateX, translateY] = [0, 0]
-  const drawF = () => gl.drawF(defaultX, (canvas.height - 200) / 2, translateX, translateY)
+  let [rotateX, rotateY] = [0, 1]
+  const drawF = () => gl.drawF(defaultX, defaultX, translateX, translateY, rotateX, rotateY)
+  drawF()
+
+  const $rangeInputs = getEl('#rangeInputs')
+  createRangeInput({
+    name: 'translateX',
+    max: canvas.width,
+    $container: $rangeInputs,
+    onChange: (value) => {
+      translateX = value
+      drawF()
+    }
+  })
+  createRangeInput({
+    name: 'translateY',
+    max: canvas.height,
+    $container: $rangeInputs,
+    onChange: (value) => {
+      translateY = value
+      drawF()
+    }
+  })
+  createRangeInput({
+    name: 'angle',
+    max: 360,
+    $container: $rangeInputs,
+    onChange: (angle) => {
+      const radians = angle * Math.PI / 180
+      rotateX = Math.sin(radians)
+      rotateY = Math.cos(radians)
+      drawF()
+    },
+  })
 
   window.addEventListener('resize', () => {
     gl.setCanvasSize()
     drawF()
   })
-
-  drawF()
-  document.addEventListener('keydown', (event) => {
-    const { keyCode } = event
-    switch (keyCode) {
-      case 38: // top
-        translateY -= 4
-        break;
-      case 39: // right
-        translateX += 4
-        break;
-      case 40: // bottom
-        translateY += 4
-        break;
-      case 37: // left
-        translateX -= 4
-        break;
-      default:
-    }
+  // document.addEventListener('keydown', (event) => {
+  //   const { keyCode } = event
+  //   switch (keyCode) {
+  //     case 38: // top
+  //       translateY -= 1
+  //       break;
+  //     case 39: // right
+  //       translateX += 1
+  //       break;
+  //     case 40: // bottom
+  //       translateY += 1
+  //       break;
+  //     case 37: // left
+  //       translateX -= 1
+  //       break;
+  //     default:
+  //   }
   
-    const isArrowPressed = [37, 38, 39, 40].some(value => keyCode === value)
-    if (isArrowPressed) drawF()
-  })
+  //   const isArrowPressed = [37, 38, 39, 40].some(value => keyCode === value)
+  //   if (isArrowPressed) drawF()
+  // })
 }
 
 window.addEventListener('load', () => {
@@ -106,7 +136,7 @@ class WebGl {
     return this
   }
 
-  drawF(x, y, translateX, translateY) {
+  drawF(x, y, translateX, translateY, rotateX, rotateY) {
     var width = 100;
     var height = 150;
     var thickness = 30;
@@ -138,11 +168,11 @@ class WebGl {
     ]
 
     const vertiecesQuantity = letterCoordinates.length / 2
-    let colors = []
-    while (colors.length < vertiecesQuantity * 3) {
-      colors.push(145, 86, 255)
-    }
-    colors = colors.slice(0, vertiecesQuantity * 3)
+    // let colors = []
+    // while (colors.length < vertiecesQuantity * 3) {
+    //   colors.push(145, 86, 255)
+    // }
+    // colors = colors.slice(0, vertiecesQuantity * 3)
     this.setPositions({
       coordinates: letterCoordinates,
     })
@@ -151,7 +181,8 @@ class WebGl {
         attributeElementsQuantity: 2,
       })
       .setUniformResolution()
-      .setUniform('u_transition', '2fv', [translateX, translateY])
+      .setUniform('u_transition', '2f', translateX, translateY)
+      .setUniform('u_rotation', '2f', rotateX , rotateY)
       .setUniform('u_color', '4f', 0.3, 0.5, 1, 1)
       // .setColors({
       //   colors,
@@ -344,4 +375,25 @@ class WebGl {
 
     return this
   }
+}
+
+function getEl(selector) {
+  return document.querySelector(selector)
+}
+
+function createRangeInput(props) {
+  const { max = '', min = 0, name, onChange, $container } = props
+  const $input = document.createElement('input')
+  $input.name = name
+  $input.min = min
+  $input.max = max
+  $input.value = 0
+  $input.type = 'range'
+  $input.id = `${name}RangeInput`
+
+  $input.addEventListener('change', () => onChange($input.value))
+  $input.addEventListener('input', () => onChange($input.value))
+
+  if ($container) $container.appendChild($input)
+  return $input
 }
