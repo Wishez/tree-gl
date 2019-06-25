@@ -1,76 +1,3 @@
-const startWebGl = (fragmetShaderText, vertexShaderText) => {
-  const gl = new WebGl({ canvasId: 'gl', vertexShaderText, fragmetShaderText })
-  const { canvas } = gl
-  // canvas.addEventListener('click', (event) => {
-  //   const { clientX, clientY } = event
-  //   gl.pushVertex(clientX, clientY)
-  //   gl.draw()
-  // })
-
-  const defaultX = 50
-  let [translateX, translateY] = [0, 0]
-  let [rotateX, rotateY] = [0, 1]
-  const drawF = () => gl.drawF(defaultX, defaultX, translateX, translateY, rotateX, rotateY)
-  drawF()
-
-  const $rangeInputs = getEl('#rangeInputs')
-  createRangeInput({
-    name: 'translateX',
-    max: canvas.width,
-    $container: $rangeInputs,
-    onChange: (value) => {
-      translateX = value
-      drawF()
-    }
-  })
-  createRangeInput({
-    name: 'translateY',
-    max: canvas.height,
-    $container: $rangeInputs,
-    onChange: (value) => {
-      translateY = value
-      drawF()
-    }
-  })
-  createRangeInput({
-    name: 'angle',
-    max: 360,
-    $container: $rangeInputs,
-    onChange: (angle) => {
-      const radians = angle * Math.PI / 180
-      rotateX = Math.sin(radians)
-      rotateY = Math.cos(radians)
-      drawF()
-    },
-  })
-
-  window.addEventListener('resize', () => {
-    gl.setCanvasSize()
-    drawF()
-  })
-  // document.addEventListener('keydown', (event) => {
-  //   const { keyCode } = event
-  //   switch (keyCode) {
-  //     case 38: // top
-  //       translateY -= 1
-  //       break;
-  //     case 39: // right
-  //       translateX += 1
-  //       break;
-  //     case 40: // bottom
-  //       translateY += 1
-  //       break;
-  //     case 37: // left
-  //       translateX -= 1
-  //       break;
-  //     default:
-  //   }
-  
-  //   const isArrowPressed = [37, 38, 39, 40].some(value => keyCode === value)
-  //   if (isArrowPressed) drawF()
-  // })
-}
-
 window.addEventListener('load', () => {
   let [VSText, FSText] = ['', ''];
   Util.domShaderSrc('/shaders/vertex.glsl')
@@ -136,7 +63,8 @@ class WebGl {
     return this
   }
 
-  drawF(x, y, translateX, translateY, rotateX, rotateY) {
+  drawF(props) {
+    const { x, y, translateX, translateY, rotateX, rotateY, scaleX, scaleY } = props
     var width = 100;
     var height = 150;
     var thickness = 30;
@@ -183,6 +111,7 @@ class WebGl {
       .setUniformResolution()
       .setUniform('u_transition', '2f', translateX, translateY)
       .setUniform('u_rotation', '2f', rotateX , rotateY)
+      .setUniform('u_scale', '2f', scaleX, scaleY)
       .setUniform('u_color', '4f', 0.3, 0.5, 1, 1)
       // .setColors({
       //   colors,
@@ -382,18 +311,122 @@ function getEl(selector) {
 }
 
 function createRangeInput(props) {
-  const { max = '', min = 0, name, onChange, $container } = props
+  const { max = '', min = 0, name, onChange, $container, value = 0, step = 1 } = props
   const $input = document.createElement('input')
   $input.name = name
   $input.min = min
   $input.max = max
-  $input.value = 0
+  $input.value = value
   $input.type = 'range'
   $input.id = `${name}RangeInput`
+  $input.step = step
 
-  $input.addEventListener('change', () => onChange($input.value))
-  $input.addEventListener('input', () => onChange($input.value))
+  const eventHandler = () => onChange($input.value)
+  $input.addEventListener('change', eventHandler)
+  $input.addEventListener('input', eventHandler)
 
   if ($container) $container.appendChild($input)
   return $input
+}
+
+function startWebGl (fragmetShaderText, vertexShaderText) {
+  const gl = new WebGl({ canvasId: 'gl', vertexShaderText, fragmetShaderText })
+  const { canvas } = gl
+  // canvas.addEventListener('click', (event) => {
+  //   const { clientX, clientY } = event
+  //   gl.pushVertex(clientX, clientY)
+  //   gl.draw()
+  // })
+
+  const defaultX = 50
+  let [translateX, translateY] = [0, 0]
+  let [rotateX, rotateY] = [0, 1]
+  let [scaleX, scaleY] = [1, 1]
+  const drawF = () => gl.drawF({
+    x: defaultX, 
+    y: defaultX,
+    translateX,
+    translateY,
+    rotateX,
+    rotateY,
+    scaleX,
+    scaleY,
+  })
+  drawF()
+
+  const $rangeInputs = getEl('#rangeInputs')
+
+  const inputs = [
+    {
+      name: 'translateX',
+      max: canvas.width,
+      min: -canvas.width,
+      $container: $rangeInputs,
+      onChange: (value) => {
+        translateX = value
+        drawF()
+      }
+    },
+    {
+      name: 'translateY',
+      max: canvas.height,
+      min: -canvas.height,
+      $container: $rangeInputs,
+      onChange: (value) => {
+        translateY = value
+        drawF()
+      }
+    },
+    {
+      name: 'angle',
+      max: 360,
+      $container: $rangeInputs,
+      onChange: (angle) => {
+        const radians = angle * Math.PI / 180
+        rotateX = Math.sin(radians)
+        rotateY = Math.cos(radians)
+        drawF()
+      },
+    },
+    {
+      name: 'scale',
+      max: 10,
+      min: -5,
+      value: 1,
+      step: 0.05,
+      $container: $rangeInputs,
+      onChange: (value) => {
+        scaleX = value
+        scaleY = value
+        drawF()
+      },
+    },
+  ]
+
+  inputs.forEach(createRangeInput)
+  window.addEventListener('resize', () => {
+    gl.setCanvasSize()
+    drawF()
+  })
+  // document.addEventListener('keydown', (event) => {
+  //   const { keyCode } = event
+  //   switch (keyCode) {
+  //     case 38: // top
+  //       translateY -= 1
+  //       break;
+  //     case 39: // right
+  //       translateX += 1
+  //       break;
+  //     case 40: // bottom
+  //       translateY += 1
+  //       break;
+  //     case 37: // left
+  //       translateX -= 1
+  //       break;
+  //     default:
+  //   }
+  
+  //   const isArrowPressed = [37, 38, 39, 40].some(value => keyCode === value)
+  //   if (isArrowPressed) drawF()
+  // })
 }
