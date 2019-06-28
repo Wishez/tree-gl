@@ -14,6 +14,82 @@ window.addEventListener('load', () => {
     .catch(error => console.error(error))
 })
 
+const m3 = (function() {
+  const FIRST = 'first'
+  const SECOND = 'second'
+  const THIRD = 'third'
+  const that = { 
+    projection: (width, height) => ([
+      2 / width, 0, 0,
+      0, -2 / height, 0,
+      -1, 1, 1,
+    ]),
+
+    identity: () => ([
+      1, 0, 0,
+      0, 1, 0,
+      0, 0, 1,
+    ]),
+
+    rotation: (angleInRadians) => {
+      const s = Math.sin(angleInRadians)
+      const c = Math.cos(angleInRadians)
+      return [
+        c, -s, 0,
+        s, c, 0,
+        0, 0, 1,
+      ]
+    },
+
+    transition: (x, y) => ([
+      1, 0, 0,
+      0, 1, 0,
+      x, y, 1,
+    ]),
+
+
+    scaling: (x, y) => ([
+      x, 0, 0,
+      0, y, 0,
+      0, 0, 1,
+    ]),
+
+    multiply: (a, b) => {
+      const factorValues = {
+        [FIRST]: [],
+        [SECOND]: [],
+        [THIRD]: []
+      }
+      for(let i = 0; i < 3; i++) {
+        factorValues[FIRST].push(a[i * 3 + 0])
+        factorValues[SECOND].push(a[i * 3 + 1])
+        factorValues[THIRD].push(a[i * 3 + 2])
+      }
+    
+      const [firstX, firstY, firstZ] = factorValues[FIRST]
+      const [secondX, secondY, secondZ] = factorValues[SECOND]
+      const [thirdX, thirdY, thirdZ] = factorValues[THIRD]
+      const multipliedMatrix = []
+      for (let i = 0; i < 3; i++) {
+        const [x, y, z] = [b[i * 3 + 0], b[i * 3 + 1], b[i * 3 + 2]]
+        multipliedMatrix.push(
+          x * firstX + y * firstY + z * firstZ,
+          x * secondX + y * secondY + z * secondZ,
+          x * thirdX + y * thirdY + z * thirdZ,
+        )
+      }
+      return multipliedMatrix
+    },
+
+    translate: (matrix, x, y) => that.multiply(matrix, that.transition(x, y)),
+
+    rotate: (matrix, angleInRadians) => that.multiply(matrix, that.rotation(angleInRadians)),
+
+    scale: (matrix, x, y) => that.multiply(matrix, that.scaling(x, y)),
+  }
+  return that
+}())
+
 class WebGl {
   constructor({ canvasId, vertexShaderText, fragmetShaderText }) {
     this.canvas = document.getElementById(canvasId)
@@ -64,7 +140,7 @@ class WebGl {
   }
 
   drawF(props) {
-    const { x, y, translateX, translateY, rotateX, rotateY, scaleX, scaleY } = props
+    const { x, y, translateX, translateY, angleInRadians, scaleX, scaleY } = props
     var width = 100;
     var height = 150;
     var thickness = 30;
@@ -101,6 +177,14 @@ class WebGl {
     //   colors.push(145, 86, 255)
     // }
     // colors = colors.slice(0, vertiecesQuantity * 3)
+
+    const { clientWidth, clientHeight } = this.canvas 
+    const projectionMatrix = m3.projection(clientWidth, clientHeight)
+    let matrix
+    matrix = m3.scale(projectionMatrix, scaleX, scaleY)
+    matrix = m3.translate(matrix, translateX, translateY)
+    matrix = m3.rotate(matrix, angleInRadians)
+
     this.setPositions({
       coordinates: letterCoordinates,
     })
@@ -108,10 +192,11 @@ class WebGl {
         attributeName: 'a_position',
         attributeElementsQuantity: 2,
       })
-      .setUniformResolution()
-      .setUniform('u_transition', '2f', translateX, translateY)
-      .setUniform('u_rotation', '2f', rotateX , rotateY)
-      .setUniform('u_scale', '2f', scaleX, scaleY)
+      // .setUniformResolution()
+      // .setUniform('u_transition', '2f', translateX, translateY)
+      // .setUniform('u_rotation', '2f', rotateX , rotateY)
+      // .setUniform('u_scale', '2f', scaleX, scaleY)
+      .setUniform('u_matrix', 'Matrix3fv', false, matrix)
       .setUniform('u_color', '4f', 0.3, 0.5, 1, 1)
       // .setColors({
       //   colors,
@@ -274,34 +359,6 @@ class WebGl {
       vertiecesQuantity || this.vertiecesQuantity // количество вершин
     )
 
-
-    return this
-  }
-
-  draw() {
-    this.createBuffer('dynamicPositionsBuffer')
-    const { context, vertexElementsQuantity } = this
-    const { ARRAY_BUFFER, DYNAMIC_DRAW } = context
-    const floatedVertexArray = new Float32Array(this.vertexArray)
-    context.bufferData(ARRAY_BUFFER, floatedVertexArray, DYNAMIC_DRAW)
-    
-    this
-      .setCanvasSize()
-      .enableAttribute({
-        attributeName: 'a_position',
-        attributeElementsQuantity: 2,
-        vertexElementsQuantity,
-      })
-      .enableAttribute({
-        attributeName: 'a_color',
-        attributeElementsQuantity: 3,
-        offset: 2,
-        vertexElementsQuantity,
-      })
-      .setUniformResolution()
-      .clearCanvas()
-      .drawVertieces()
-
     return this
   }
 }
@@ -332,23 +389,16 @@ function createRangeInput(props) {
 function startWebGl (fragmetShaderText, vertexShaderText) {
   const gl = new WebGl({ canvasId: 'gl', vertexShaderText, fragmetShaderText })
   const { canvas } = gl
-  // canvas.addEventListener('click', (event) => {
-  //   const { clientX, clientY } = event
-  //   gl.pushVertex(clientX, clientY)
-  //   gl.draw()
-  // })
-
   const defaultX = 50
   let [translateX, translateY] = [0, 0]
-  let [rotateX, rotateY] = [0, 1]
+  let angleInRadians = 0
   let [scaleX, scaleY] = [1, 1]
   const drawF = () => gl.drawF({
     x: defaultX, 
     y: defaultX,
     translateX,
     translateY,
-    rotateX,
-    rotateY,
+    angleInRadians,
     scaleX,
     scaleY,
   })
@@ -382,9 +432,7 @@ function startWebGl (fragmetShaderText, vertexShaderText) {
       max: 360,
       $container: $rangeInputs,
       onChange: (angle) => {
-        const radians = angle * Math.PI / 180
-        rotateX = Math.sin(radians)
-        rotateY = Math.cos(radians)
+        angleInRadians = angle * Math.PI / 180
         drawF()
       },
     },
@@ -408,25 +456,4 @@ function startWebGl (fragmetShaderText, vertexShaderText) {
     gl.setCanvasSize()
     drawF()
   })
-  // document.addEventListener('keydown', (event) => {
-  //   const { keyCode } = event
-  //   switch (keyCode) {
-  //     case 38: // top
-  //       translateY -= 1
-  //       break;
-  //     case 39: // right
-  //       translateX += 1
-  //       break;
-  //     case 40: // bottom
-  //       translateY += 1
-  //       break;
-  //     case 37: // left
-  //       translateX -= 1
-  //       break;
-  //     default:
-  //   }
-  
-  //   const isArrowPressed = [37, 38, 39, 40].some(value => keyCode === value)
-  //   if (isArrowPressed) drawF()
-  // })
 }
