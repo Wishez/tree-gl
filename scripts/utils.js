@@ -18,6 +18,53 @@ class Util {
     })
   }
 
+  static loadShaders(context) {
+    let [VSText, FSText] = ['', ''];
+    return Util.domShaderSrc(`/shaders/${context}-vertex.glsl`)
+      .then((responseText) => {
+        VSText = responseText
+
+        return Util.domShaderSrc(`/shaders/${context}-fragment.glsl`)
+      })
+      .then((responseText) => {
+        FSText = responseText
+
+        return Promise.resolve({ FSText, VSText })
+      })
+      .catch(error => console.error(error))
+  }
+
+  static shouldStartPGLrogram(context) {
+    return Boolean(document.body.className.split(' ').find(className => className === context))
+  }
+
+  static getEl(selector) {
+    return document.querySelector(selector)
+  }
+  
+  static createRangeInput(props) {
+    const { max = '', min = 0, name, onChange, $container, value = 0, step = 1 } = props
+    const $input = document.createElement('input')
+    $input.name = name
+    $input.min = min
+    $input.max = max
+    $input.value = value
+    $input.type = 'range'
+    $input.id = `${name}RangeInput`
+    $input.step = step
+  
+    const eventHandler = () => onChange(Number($input.value))
+    $input.addEventListener('change', eventHandler)
+    $input.addEventListener('input', eventHandler)
+  
+    if ($container) $container.appendChild($input)
+    return $input
+  }
+
+  static createRangeInputs(inputsConfigs) {
+    return inputsConfigs.map(Util.createRangeInput)
+  }
+
   static m3 = (function() {
     const that = { 
       projection: (width, height) => ([
@@ -62,9 +109,9 @@ class Util {
         for (let i = 0; i < 3; i++) {
           const [x, y, z] = get2DMatrixRow(b, i)
           multipliedMatrix.push(
-            x * firstX + y * firstY + z * firstZ,
-            x * secondX + y * secondY + z * secondZ,
-            x * thirdX + y * thirdY + z * thirdZ,
+            x * firstX + y * secondX + z * thirdX,
+            x * firstY + y * secondY + z * thirdY,
+            x * firstZ + y * secondZ + z * thirdZ,
           )
         }
         return multipliedMatrix
@@ -82,17 +129,17 @@ class Util {
   static m4 = (function() {
     const that = { 
       projection: (width, height, depth) => ([
-        2 / width, 0, 0, 1,
-        0, -2 / height, 0, 1,
-        0, 0, 2 / depth, 1,
-        -1, 1, 1, 1,
+        2 / width, 0, 0, 0,
+        0, -2 / height, 0, 0,
+        0, 0, 2 / depth, 0,
+        -1, 1, 0, 1,
       ]),
 
       identity: () => ([
-        1, 0, 0, 1,
-        0, 1, 0, 1,
-        0, 0, 1, 1,
-        1, 1, 1, 1,
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1,
       ]),
 
       rotationX: (angleInRadians) => {
@@ -151,10 +198,10 @@ class Util {
         for (let i = 0; i < 4; i++) {
           const [x, y, z, w] = get3DMatrixRow(b, i)
           multipliedMatrix.push(
-            x * firstX + y * firstY + z * firstZ + w * firstW,
-            x * secondX + y * secondY + z * secondZ + w * secondW,
-            x * thirdX + y * thirdY + z * thirdZ + w * thirdW,
-            x * fourthX + y * fourthY + z * fourthZ + w * fourthW,
+            x * firstX + y * secondX + z * thirdX + w * fourthX,
+            x * firstY + y * secondY + z * thirdY + w * fourthY,
+            x * firstZ + y * secondZ + z * thirdZ + w * fourthZ,
+            x * firstW + y * secondW + z * thirdW + w * fourthW,
           )
         }
         return multipliedMatrix
@@ -170,6 +217,7 @@ class Util {
 
       rotateZ: (matrix, angleInRadians) => that.multiply(matrix, that.rotationZ(angleInRadians)),
     }
+    return that
   }())
 }
 

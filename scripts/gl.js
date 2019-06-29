@@ -1,23 +1,14 @@
 window.addEventListener('load', () => {
-  let [VSText, FSText] = ['', ''];
-  Util.domShaderSrc('/shaders/vertex.glsl')
-    .then((responseText) => {
-      VSText = responseText
-
-      return Util.domShaderSrc('/shaders/fragment.glsl')
-    })
-    .then((responseText) => {
-      FSText = responseText
-
-      return startWebGl(FSText, VSText)
-    })
-    .catch(error => console.error(error))
+  const context = '2d'
+  if (Util.shouldStartPGLrogram(context)) {
+    Util.loadShaders('2d')
+      .then(({ VSText, FSText }) => startDrawF(FSText, VSText))
+  }
 })
-
 
 class WebGL {
   constructor({ canvasId, vertexShaderText, fragmetShaderText }) {
-    this.canvas = document.getElementById(canvasId)
+    this.canvas = Util.getEl(`#${canvasId}`)
     this.context = this.canvas.getContext('webgl')
     this.program = this.context.createProgram()
     this.vertexArray = []
@@ -207,7 +198,7 @@ class WebGL {
 
 const m3 = Util.m3
 
-class WebGl2D extends WebGL {
+class FigureF extends WebGL {
 
   drawF(props) {
     const { x, y, translateX, translateY, angleInRadians, scaleX, scaleY } = props
@@ -264,31 +255,8 @@ class WebGl2D extends WebGL {
   }
 }
 
-function getEl(selector) {
-  return document.querySelector(selector)
-}
-
-function createRangeInput(props) {
-  const { max = '', min = 0, name, onChange, $container, value = 0, step = 1 } = props
-  const $input = document.createElement('input')
-  $input.name = name
-  $input.min = min
-  $input.max = max
-  $input.value = value
-  $input.type = 'range'
-  $input.id = `${name}RangeInput`
-  $input.step = step
-
-  const eventHandler = () => onChange($input.value)
-  $input.addEventListener('change', eventHandler)
-  $input.addEventListener('input', eventHandler)
-
-  if ($container) $container.appendChild($input)
-  return $input
-}
-
-function startWebGl (fragmetShaderText, vertexShaderText) {
-  const gl = new WebGl2D({ canvasId: 'gl', vertexShaderText, fragmetShaderText })
+function startDrawF(fragmetShaderText, vertexShaderText) {
+  const gl = new FigureF({ canvasId: 'gl', vertexShaderText, fragmetShaderText })
   const { clientHeight, clientWidth } = gl.canvas
   let [translateX, translateY] = [0, 0]
   let angleInRadians = 0
@@ -304,8 +272,7 @@ function startWebGl (fragmetShaderText, vertexShaderText) {
   })
   drawF()
 
-  const $rangeInputs = getEl('#rangeInputs')
-
+  const $rangeInputs = Util.getEl('#rangeInputs')
   const inputs = [
     {
       name: 'translateX',
@@ -351,7 +318,7 @@ function startWebGl (fragmetShaderText, vertexShaderText) {
     },
   ]
 
-  inputs.forEach(createRangeInput)
+  Util.createRangeInputs(inputs)
   window.addEventListener('resize', () => {
     gl.setCanvasSize()
     drawF()
